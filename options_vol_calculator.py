@@ -2,6 +2,8 @@ import math
 from scipy.stats import norm
 from scipy.optimize import brentq
 from datetime import datetime
+import urllib.request
+import json
 
 
 def black_scholes_price(S, K, T, r, q, sigma, option_type='call'):
@@ -73,11 +75,30 @@ def main():
 
     # Get inputs
     ticker = input("Ticker: ").upper().strip()
+
+    # Fetch real underlying price from Yahoo Finance
+    print(f"Fetching {ticker} price...")
+    current_price = None
+    try:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1d"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            current_price = data['chart']['result'][0]['meta'].get('regularMarketPrice')
+    except Exception as e:
+        print(f"Error fetching price: {e}")
+
+    if current_price:
+        print(f"Current {ticker} price: ${current_price:.2f}")
+        S = current_price
+    else:
+        print("Could not fetch price.")
+        S = float(input("Underlying price: $"))
+
     exp_date = input("Expiration date (YYYY-MM-DD): ")
     K = float(input("Strike price: $"))
     option_type = input("Option type (call/put): ").lower().strip()
     val_date = input("Valuation date (YYYY-MM-DD): ")
-    S = float(input("Underlying price: $"))
     r = float(input("Risk-free rate (e.g., 0.05 for 5%): "))
     q = float(input("Dividend yield (e.g., 0.01 for 1%): "))
 
