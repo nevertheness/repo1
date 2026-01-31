@@ -112,16 +112,16 @@ def main():
     print("=" * 100)
 
     # Build header and row based on which prices were provided
-    headers = ["Option", "Val Date", "Underlying", "r", "Div", "Vol A"]
-    values = [option_desc, val_date, f"${S:.2f}", f"{r*100:.2f}%", f"{q*100:.2f}%", format_vol(vol_a)]
+    headers = ["Option", "Val Date", "Underlying", "r", "Div", "Price A", "Vol A"]
+    values = [option_desc, val_date, f"${S:.2f}", f"{r*100:.2f}%", f"{q*100:.2f}%", f"${price_a:.2f}", format_vol(vol_a)]
 
     if price_b is not None:
-        headers.append("Vol B")
-        values.append(format_vol(vol_b))
+        headers.extend(["Price B", "Vol B"])
+        values.extend([f"${price_b:.2f}", format_vol(vol_b)])
 
     if price_c is not None:
-        headers.append("Vol C")
-        values.append(format_vol(vol_c))
+        headers.extend(["Price C", "Vol C"])
+        values.extend([f"${price_c:.2f}", format_vol(vol_c)])
 
     # Calculate column widths
     widths = [max(len(h), len(v)) + 2 for h, v in zip(headers, values)]
@@ -139,14 +139,6 @@ def main():
     print(value_row)
     print(separator)
 
-    # Print price inputs for reference
-    print()
-    print("Option Prices:")
-    print(f"  Price A: ${price_a:.2f}")
-    if price_b is not None:
-        print(f"  Price B: ${price_b:.2f}")
-    if price_c is not None:
-        print(f"  Price C: ${price_c:.2f}")
 
 
 if __name__ == "__main__":
