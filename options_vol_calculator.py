@@ -3,52 +3,45 @@ from scipy.stats import norm
 from scipy.optimize import brentq
 from datetime import datetime
 
-def black_scholes_price(S, K, T, r, sigma, option_type='call'):
+
+def black_scholes_price(S, K, T, r, q, sigma, option_type='call'):
     """
-    Calculate Black-Scholes option price.
+    Calculate Black-Scholes option price with dividend yield.
 
     S: Current stock price
     K: Strike price
     T: Time to expiration (in years)
     r: Risk-free rate (annual)
+    q: Dividend yield (annual)
     sigma: Volatility (annual)
     option_type: 'call' or 'put'
     """
     if T <= 0:
-        # At expiration
         if option_type == 'call':
             return max(S - K, 0)
         else:
             return max(K - S, 0)
 
-    d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
+    d1 = (math.log(S / K) + (r - q + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
     d2 = d1 - sigma * math.sqrt(T)
 
     if option_type == 'call':
-        price = S * norm.cdf(d1) - K * math.exp(-r * T) * norm.cdf(d2)
+        price = S * math.exp(-q * T) * norm.cdf(d1) - K * math.exp(-r * T) * norm.cdf(d2)
     else:
-        price = K * math.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
+        price = K * math.exp(-r * T) * norm.cdf(-d2) - S * math.exp(-q * T) * norm.cdf(-d1)
 
     return price
 
 
-def implied_volatility(option_price, S, K, T, r, option_type='call'):
+def implied_volatility(option_price, S, K, T, r, q, option_type='call'):
     """
     Calculate implied volatility using Brent's method.
-
-    option_price: Market price of the option
-    S: Current stock price
-    K: Strike price
-    T: Time to expiration (in years)
-    r: Risk-free rate (annual)
-    option_type: 'call' or 'put'
     """
     def objective(sigma):
-        return black_scholes_price(S, K, T, r, sigma, option_type) - option_price
+        return black_scholes_price(S, K, T, r, q, sigma, option_type) - option_price
 
     try:
-        # Search for IV between 0.1% and 500%
-        iv = brentq(objective, 0.001, 5.0)
+        iv = brentq(objective, 0.001, 10.0)
         return iv
     except ValueError:
         return None
@@ -65,20 +58,37 @@ def calculate_time_to_expiry(val_date, exp_date):
     return days / 365.0
 
 
+def format_vol(iv):
+    """Format IV as percentage or N/A."""
+    if iv is None:
+        return "N/A"
+    return f"{iv * 100:.2f}%"
+
+
 def main():
-    print("=" * 50)
+    print("=" * 60)
     print("  OPTIONS IMPLIED VOLATILITY CALCULATOR")
-    print("=" * 50)
+    print("=" * 60)
     print()
 
     # Get inputs
-    S = float(input("Stock price: $"))
+    ticker = input("Ticker: ").upper().strip()
+    exp_date = input("Expiration date (YYYY-MM-DD): ")
     K = float(input("Strike price: $"))
-    option_price = float(input("Option price: $"))
     option_type = input("Option type (call/put): ").lower().strip()
     val_date = input("Valuation date (YYYY-MM-DD): ")
-    exp_date = input("Expiration date (YYYY-MM-DD): ")
+    S = float(input("Underlying price: $"))
     r = float(input("Risk-free rate (e.g., 0.05 for 5%): "))
+    q = float(input("Dividend yield (e.g., 0.01 for 1%): "))
+
+    # Get option prices (A required, B and C optional)
+    price_a = float(input("Option price A: $"))
+
+    price_b_input = input("Option price B (or Enter to skip): $").strip()
+    price_b = float(price_b_input) if price_b_input else None
+
+    price_c_input = input("Option price C (or Enter to skip): $").strip()
+    price_c = float(price_c_input) if price_c_input else None
 
     # Calculate time to expiry
     T = calculate_time_to_expiry(val_date, exp_date)
@@ -87,31 +97,56 @@ def main():
         print("\nError: Expiration date must be after valuation date.")
         return
 
-    # Calculate implied volatility
-    iv = implied_volatility(option_price, S, K, T, r, option_type)
+    # Calculate implied volatilities
+    vol_a = implied_volatility(price_a, S, K, T, r, q, option_type)
+    vol_b = implied_volatility(price_b, S, K, T, r, q, option_type) if price_b else None
+    vol_c = implied_volatility(price_c, S, K, T, r, q, option_type) if price_c else None
 
+    # Build option description
+    option_desc = f"{ticker} {exp_date} {K:.0f} {option_type.upper()}"
+
+    # Print table
     print()
-    print("=" * 50)
+    print("=" * 100)
     print("  RESULTS")
-    print("=" * 50)
-    print(f"Stock Price:      ${S:.2f}")
-    print(f"Strike Price:     ${K:.2f}")
-    print(f"Option Price:     ${option_price:.2f}")
-    print(f"Option Type:      {option_type.upper()}")
-    print(f"Days to Expiry:   {int(T * 365)}")
-    print(f"Time to Expiry:   {T:.4f} years")
-    print(f"Risk-Free Rate:   {r*100:.2f}%")
-    print("-" * 50)
+    print("=" * 100)
 
-    if iv is not None:
-        print(f"IMPLIED VOLATILITY: {iv*100:.2f}%")
+    # Build header and row based on which prices were provided
+    headers = ["Option", "Val Date", "Underlying", "r", "Div", "Vol A"]
+    values = [option_desc, val_date, f"${S:.2f}", f"{r*100:.2f}%", f"{q*100:.2f}%", format_vol(vol_a)]
 
-        # Verify by calculating price with IV
-        verify_price = black_scholes_price(S, K, T, r, iv, option_type)
-        print(f"Verified Price:     ${verify_price:.2f}")
-    else:
-        print("Could not calculate implied volatility.")
-        print("Check that the option price is within valid bounds.")
+    if price_b is not None:
+        headers.append("Vol B")
+        values.append(format_vol(vol_b))
+
+    if price_c is not None:
+        headers.append("Vol C")
+        values.append(format_vol(vol_c))
+
+    # Calculate column widths
+    widths = [max(len(h), len(v)) + 2 for h, v in zip(headers, values)]
+
+    # Print header
+    header_row = "|".join(h.center(w) for h, w in zip(headers, widths))
+    separator = "+".join("-" * w for w in widths)
+
+    print(separator)
+    print(header_row)
+    print(separator)
+
+    # Print values
+    value_row = "|".join(v.center(w) for v, w in zip(values, widths))
+    print(value_row)
+    print(separator)
+
+    # Print price inputs for reference
+    print()
+    print("Option Prices:")
+    print(f"  Price A: ${price_a:.2f}")
+    if price_b is not None:
+        print(f"  Price B: ${price_b:.2f}")
+    if price_c is not None:
+        print(f"  Price C: ${price_c:.2f}")
 
 
 if __name__ == "__main__":
