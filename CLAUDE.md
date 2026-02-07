@@ -78,7 +78,19 @@ python scripts/options_vol_calculator.py
 
 ### Using the IV Skill
 
-From Claude Code CLI, use the `/iv` slash command for quick calculations.
+From Claude Code CLI, use the `/iv` or `/iv-enhanced` slash commands for quick calculations.
+
+### Registering Skills
+
+Skills live in two places:
+- `skills/<name>/SKILL.md` — version-controlled source of truth in the repo
+- `~/.claude/skills/<name>/SKILL.md` — where Claude Code discovers them
+
+To register a new or updated skill, copy the file:
+```bash
+cp skills/<name>/SKILL.md ~/.claude/skills/<name>/SKILL.md
+```
+Don't use symlinks — they're unreliable on Windows. When updating a skill, update both copies.
 
 ## Code Conventions
 
