@@ -162,5 +162,79 @@ def main():
 
 
 
+def parse_date(date_str):
+    """Parse date in M/D/YYYY or YYYY-MM-DD format, return YYYY-MM-DD."""
+    for fmt in ("%m/%d/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    raise ValueError(f"Invalid date format: {date_str}. Use M/D/YYYY or YYYY-MM-DD.")
+
+
+def fetch_price(ticker):
+    """Fetch current price from Yahoo Finance."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1d"
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req, timeout=10) as response:
+        data = json.loads(response.read().decode())
+        return data['chart']['result'][0]['meta'].get('regularMarketPrice')
+
+
+def cli_mode(args):
+    """Run IV calculation from command-line arguments."""
+    if len(args) < 6:
+        print("Usage: python options_vol_calculator.py TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]")
+        print("Example: python options_vol_calculator.py AAPL 3/31/2026 300 call 1/31/2026 10 20")
+        return
+
+    ticker = args[0].upper()
+    exp_date = parse_date(args[1])
+    K = float(args[2])
+    option_type = args[3].lower()
+    val_date = parse_date(args[4])
+    prices = [float(p) for p in args[5:8]]  # up to 3 prices
+
+    S = fetch_price(ticker)
+    if S is None:
+        print(f"Error: Could not fetch price for {ticker}")
+        return
+
+    r = 0.045
+    # Estimate dividend yield
+    q = 0.005 if ticker in ('AAPL', 'MSFT', 'JPM', 'JNJ', 'PG', 'KO', 'PEP', 'VZ', 'T', 'XOM', 'CVX') else 0.0
+
+    T = calculate_time_to_expiry(val_date, exp_date)
+    if T <= 0:
+        print("Error: Expiration date must be after valuation date.")
+        return
+
+    option_desc = f"{ticker} {exp_date} {K:.0f} {option_type.upper()}"
+    vols = [implied_volatility(p, S, K, T, r, q, option_type) for p in prices]
+
+    # Build table
+    headers = ["Option", "Val Date", "Underlying", "r", "Div"]
+    values = [option_desc, val_date, f"${S:.2f}", f"{r*100:.2f}%", f"{q*100:.2f}%"]
+    labels = ["A", "B", "C"]
+    for i, (p, v) in enumerate(zip(prices, vols)):
+        headers.extend([f"Price {labels[i]}", f"Vol {labels[i]}"])
+        values.extend([f"${p:.2f}", format_vol(v)])
+
+    widths = [max(len(h), len(v)) + 2 for h, v in zip(headers, values)]
+    separator = "+".join("-" * w for w in widths)
+    header_row = "|".join(h.center(w) for h, w in zip(headers, widths))
+    value_row = "|".join(v.center(w) for v, w in zip(values, widths))
+
+    print(separator)
+    print(header_row)
+    print(separator)
+    print(value_row)
+    print(separator)
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) > 1:
+        cli_mode(sys.argv[1:])
+    else:
+        main()

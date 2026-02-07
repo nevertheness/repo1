@@ -11,7 +11,7 @@ A collection of Python-based financial analysis tools for stock options data, in
 - Lists available options expiration dates
 - Displays calls and puts near the money (±15% of current price)
 - Calculates implied volatility using Black-Scholes model with Brent's method
-- Provides a `/iv` skill for quick IV calculations from the CLI
+- Provides `/iv` and `/iv-enhanced` skills for quick IV calculations from the CLI
 
 ## Codebase Structure
 
@@ -21,10 +21,12 @@ A collection of Python-based financial analysis tools for stock options data, in
 ├── scripts/
 │   ├── nvda_options.py                # NVDA options chain viewer
 │   ├── aapl_options.py                # AAPL options chain viewer
-│   └── options_vol_calculator.py      # Interactive IV calculator (Black-Scholes)
+│   └── options_vol_calculator.py      # IV calculator (Black-Scholes) - interactive & CLI modes
 └── skills/
-    └── iv/
-        └── SKILL.md                   # /iv slash command definition
+    ├── iv/
+    │   └── SKILL.md                   # /iv slash command definition
+    └── iv-enhanced/
+        └── SKILL.md                   # /iv-enhanced skill (uses options_vol_calculator module)
 ```
 
 ### Key Files
@@ -39,10 +41,16 @@ A collection of Python-based financial analysis tools for stock options data, in
 - IV solving via `scipy.optimize.brentq`
 - Fetches live underlying price from Yahoo Finance API
 - Supports up to 3 option prices per calculation
+- CLI mode: `python scripts/options_vol_calculator.py TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]`
+- Interactive mode: `python scripts/options_vol_calculator.py` (no args)
 
 **`skills/iv/SKILL.md`** - Claude Code skill for quick IV calculations:
 - Usage: `/iv TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]`
 - Example: `/iv AAPL 3/31/2026 300 call 1/31/2026 10 20`
+
+**`skills/iv-enhanced/SKILL.md`** - Enhanced IV skill using the options_vol_calculator CLI:
+- Runs `python scripts/options_vol_calculator.py` directly with arguments (fast, no AI code generation)
+- Usage: `/iv-enhanced TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]`
 
 ## Dependencies
 
