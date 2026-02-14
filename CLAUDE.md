@@ -1,128 +1,61 @@
 # CLAUDE.md
 
-> AI assistant guide for the Options Analysis Toolkit
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-A collection of Python-based financial analysis tools for stock options data, including options chain viewers and an implied volatility calculator using Black-Scholes pricing.
+Options Analysis Toolkit — Python CLI tools for stock options data. Fetches options chains via yfinance, displays near-the-money calls/puts, and calculates implied volatility using Black-Scholes with Brent's method.
 
-### What This Project Does
-- Fetches current stock prices and options chains (NVDA, AAPL)
-- Lists available options expiration dates
-- Displays calls and puts near the money (±15% of current price)
-- Calculates implied volatility using Black-Scholes model with Brent's method
-- Provides `/iv` and `/iv-enhanced` skills for quick IV calculations from the CLI
+## Commands
 
-## Codebase Structure
+```bash
+# Install dependencies
+pip install yfinance scipy
 
-```
-/
-├── CLAUDE.md                          # This file - AI assistant guidelines
-├── scripts/
-│   ├── nvda_options.py                # NVDA options chain viewer
-│   ├── aapl_options.py                # AAPL options chain viewer
-│   └── options_vol_calculator.py      # IV calculator (Black-Scholes) - interactive & CLI modes
-└── skills/
-    ├── iv/
-    │   └── SKILL.md                   # /iv slash command definition
-    └── iv-enhanced/
-        └── SKILL.md                   # /iv-enhanced skill (uses options_vol_calculator module)
+# Run options chain viewers
+python scripts/nvda_options.py
+python scripts/aapl_options.py
+
+# IV calculator - interactive mode
+python scripts/options_vol_calculator.py
+
+# IV calculator - CLI mode (supports up to 3 prices)
+python scripts/options_vol_calculator.py TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]
+# Example: python scripts/options_vol_calculator.py AAPL 3/31/2026 300 call 1/31/2026 10 20
 ```
 
-### Key Files
+No test suite, linter, or build step exists. Scripts are run directly.
 
-**`scripts/nvda_options.py`** / **`scripts/aapl_options.py`** - Options chain viewers:
-- Stock data retrieval via `yfinance.Ticker`
-- Options chain fetching and filtering (±15% of current price)
-- Formatted console output
+## Architecture
 
-**`scripts/options_vol_calculator.py`** - Implied volatility calculator:
-- Black-Scholes pricing with dividend yield
-- IV solving via `scipy.optimize.brentq`
-- Fetches live underlying price from Yahoo Finance API
-- Supports up to 3 option prices per calculation
-- CLI mode: `python scripts/options_vol_calculator.py TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]`
-- Interactive mode: `python scripts/options_vol_calculator.py` (no args)
+- **`scripts/nvda_options.py`** / **`scripts/aapl_options.py`** — Standalone options chain viewers using `yfinance.Ticker`. Filter to ±15% of current price. Nearly identical; only the ticker symbol differs.
+- **`scripts/options_vol_calculator.py`** — IV calculator with two modes (interactive and CLI). Uses `scipy.optimize.brentq` for solving and the Yahoo Finance chart API (`query1.finance.yahoo.com`) as a lightweight price source instead of yfinance. Supports dividend yield in Black-Scholes pricing.
+- **`skills/iv-enhanced/SKILL.md`** — `/iv-enhanced` slash command: directly invokes `options_vol_calculator.py` CLI.
 
-**`skills/iv/SKILL.md`** - Claude Code skill for quick IV calculations:
-- Usage: `/iv TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]`
-- Example: `/iv AAPL 3/31/2026 300 call 1/31/2026 10 20`
-
-**`skills/iv-enhanced/SKILL.md`** - Enhanced IV skill using the options_vol_calculator CLI:
-- Runs `python scripts/options_vol_calculator.py` directly with arguments (fast, no AI code generation)
-- Usage: `/iv-enhanced TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]`
+Skills must be copied to `~/.claude/skills/<name>/SKILL.md` for Claude Code to discover them. Don't use symlinks.
 
 ## Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `yfinance` | Yahoo Finance API wrapper for stock/options data |
-| `pandas` | Data manipulation (implied by yfinance, used for DataFrames) |
-| `scipy` | Brent's method for IV solving, normal distribution for Black-Scholes |
-
-### Installation
-
-```bash
-pip install yfinance scipy
-```
-
-## Development Workflow
-
-### Running Scripts
-
-```bash
-python scripts/nvda_options.py
-python scripts/aapl_options.py
-python scripts/options_vol_calculator.py
-```
-
-### Using the IV Skill
-
-From Claude Code CLI, use the `/iv` or `/iv-enhanced` slash commands for quick calculations.
-
-### Registering Skills
-
-Skills live in two places:
-- `skills/<name>/SKILL.md` — version-controlled source of truth in the repo
-- `~/.claude/skills/<name>/SKILL.md` — where Claude Code discovers them
-
-To register a new or updated skill, copy the file:
-```bash
-cp skills/<name>/SKILL.md ~/.claude/skills/<name>/SKILL.md
-```
-Don't use symlinks — they're unreliable on Windows. When updating a skill, update both copies.
+`yfinance` (options chain data), `scipy` (Brent's method + normal distribution for Black-Scholes), `pandas` (implicit via yfinance).
 
 ## Code Conventions
 
-### Style Guidelines
-- Use descriptive variable names (e.g., `nearest_exp`, `current_price`)
-- Include section headers with `===` formatting for console output
-- Filter large datasets to show only relevant information
-- Use f-strings for string formatting
-
-### Data Handling
-- Always use `.get()` with fallback values when accessing dict keys
-- Filter DataFrames using boolean indexing
-- Display relevant columns only (strike, lastPrice, bid, ask, volume, impliedVolatility)
-
-## Testing Considerations
-
-- **Network dependency**: Requires internet access to Yahoo Finance
-- **Market hours**: Data freshness varies based on market status
-- **Rate limiting**: Excessive requests may be throttled by Yahoo Finance
+- Descriptive variable names (e.g., `nearest_exp`, `current_price`)
+- Console section headers with `===` formatting
+- Use `.get()` with fallback values on dict keys from API responses
+- Filter DataFrames with boolean indexing; display only: strike, lastPrice, bid, ask, volume, impliedVolatility
+- f-strings for formatting
+- Handle potential `None` values from Yahoo Finance API responses
 
 ## Git Workflow
 
 - **Always run `git pull` at the start of every session** before doing any work
 - Branch naming: `claude/<description>-<session-id>`
-- Commit messages should be descriptive of changes
 - Push to feature branches, not directly to main
 
-## Notes for AI Assistants
+## Notes
 
-1. Keep scripts simple and self-contained
-2. The yfinance API can change; check documentation if errors occur
-3. Stock data is real-time during market hours, delayed otherwise
-4. Options data structure depends on yfinance version
-5. Always handle potential `None` values from API responses
-6. The Yahoo Finance chart API (`query1.finance.yahoo.com`) is used as a lightweight alternative to yfinance for fetching just the current price
+- Network access to Yahoo Finance required for all scripts
+- Data freshness varies with market hours; rate limiting possible
+- The yfinance API can change across versions; check docs if errors occur
+- The Yahoo Finance chart API is used in `options_vol_calculator.py` as a lightweight alternative to the full yfinance library for fetching current price only
