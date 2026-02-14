@@ -16,10 +16,10 @@ pip install yfinance scipy
 python scripts/nvda_options.py
 python scripts/aapl_options.py
 
-# IV calculator - interactive mode
+# IV calculator - interactive mode (prompts for r, dividend yield; dates must be YYYY-MM-DD)
 python scripts/options_vol_calculator.py
 
-# IV calculator - CLI mode (supports up to 3 prices)
+# IV calculator - CLI mode (supports up to 3 prices; dates accept M/D/YYYY or YYYY-MM-DD)
 python scripts/options_vol_calculator.py TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]
 # Example: python scripts/options_vol_calculator.py AAPL 3/31/2026 300 call 1/31/2026 10 20
 ```
@@ -29,7 +29,7 @@ No test suite, linter, or build step exists. Scripts are run directly.
 ## Architecture
 
 - **`scripts/nvda_options.py`** / **`scripts/aapl_options.py`** — Standalone options chain viewers using `yfinance.Ticker`. Filter to ±15% of current price. Nearly identical; only the ticker symbol differs.
-- **`scripts/options_vol_calculator.py`** — IV calculator with two modes (interactive and CLI). Uses `scipy.optimize.brentq` for solving and the Yahoo Finance chart API (`query1.finance.yahoo.com`) as a lightweight price source instead of yfinance. Supports dividend yield in Black-Scholes pricing.
+- **`scripts/options_vol_calculator.py`** — IV calculator with two modes (interactive and CLI). Uses `scipy.optimize.brentq` for solving and the Yahoo Finance chart API (`query1.finance.yahoo.com`) as a lightweight price source instead of yfinance. Supports dividend yield in Black-Scholes pricing. CLI mode uses hardcoded defaults: r=4.5%, dividend yield estimated by ticker (0.5% for known dividend payers, 0% otherwise). Interactive mode prompts for all parameters.
 - **`skills/iv-enhanced/SKILL.md`** — `/iv-enhanced` slash command: directly invokes `options_vol_calculator.py` CLI.
 
 Skills must be copied to `~/.claude/skills/<name>/SKILL.md` for Claude Code to discover them. Don't use symlinks.
