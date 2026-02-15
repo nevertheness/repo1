@@ -1,5 +1,5 @@
 ---
-name: iv-enhanced
+name: iv
 description: Calculate implied volatility using the options_vol_calculator module
 argument-hint: "TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]"
 ---
