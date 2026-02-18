@@ -227,16 +227,31 @@ def cli_mode(args):
     K = float(args[2])
     option_type = args[3].lower()
     val_date = parse_date(args[4])
-    prices = [float(p) for p in args[5:8]]  # up to 3 prices
+    # Extract optional R=X% / Q=X% overrides from remaining args
+    r_override = None
+    q_override = None
+    filtered_args = []
+    for arg in args[5:]:
+        upper = arg.upper()
+        if upper.startswith('R='):
+            val = upper[2:].rstrip('%')
+            r_override = float(val) / 100
+        elif upper.startswith('Q='):
+            val = upper[2:].rstrip('%')
+            q_override = float(val) / 100
+        else:
+            filtered_args.append(arg)
+    prices = [float(p) for p in filtered_args[:3]]  # up to 3 prices
 
     S = fetch_price(ticker)
     if S is None:
         print(f"Error: Could not fetch price for {ticker}")
         return
 
-    r = 0.045
+    r = r_override if r_override is not None else 0.045
     # Estimate dividend yield
-    q = 0.005 if ticker in ('AAPL', 'MSFT', 'JPM', 'JNJ', 'PG', 'KO', 'PEP', 'VZ', 'T', 'XOM', 'CVX') else 0.0
+    default_q = 0.005 if ticker in ('AAPL', 'MSFT', 'JPM', 'JNJ', 'PG', 'KO', 'PEP', 'VZ', 'T', 'XOM', 'CVX') else 0.0
+    q = q_override if q_override is not None else default_q
 
     T = calculate_time_to_expiry(val_date, exp_date)
     if T <= 0:
