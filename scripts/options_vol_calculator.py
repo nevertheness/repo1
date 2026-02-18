@@ -3,6 +3,7 @@ from scipy.stats import norm
 from scipy.optimize import brentq
 from datetime import datetime
 import urllib.request
+import urllib.parse
 import json
 
 
@@ -172,9 +173,37 @@ def parse_date(date_str):
     raise ValueError(f"Invalid date format: {date_str}. Use M/D/YYYY or YYYY-MM-DD.")
 
 
+# Bloomberg country code -> Yahoo Finance suffix mapping
+BLOOMBERG_SUFFIX_MAP = {
+    'JP': '.T',   # Tokyo Stock Exchange
+    'LN': '.L',   # London Stock Exchange
+    'HK': '.HK',  # Hong Kong Stock Exchange
+    'GR': '.DE',  # Deutsche Boerse (XETRA)
+    'FP': '.PA',  # Euronext Paris
+    'AU': '.AX',  # Australian Securities Exchange
+    'CN': '.TO',  # Toronto Stock Exchange
+    'SS': '.SS',  # Shanghai Stock Exchange
+    'SZ': '.SZ',  # Shenzhen Stock Exchange
+    'KS': '.KS',  # Korea Stock Exchange
+    'SW': '.SW',  # SIX Swiss Exchange
+}
+
+
+def bloomberg_to_yahoo(ticker):
+    """Convert Bloomberg-style ticker (e.g. '6857 JP') to Yahoo Finance format (e.g. '6857.T')."""
+    parts = ticker.split()
+    if len(parts) == 2:
+        code, country = parts[0], parts[1].upper()
+        if country in BLOOMBERG_SUFFIX_MAP:
+            return code + BLOOMBERG_SUFFIX_MAP[country]
+    return ticker
+
+
 def fetch_price(ticker):
     """Fetch current price from Yahoo Finance."""
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1d"
+    yahoo_ticker = bloomberg_to_yahoo(ticker)
+    encoded_ticker = urllib.parse.quote(yahoo_ticker, safe='')
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1d&range=1d"
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     with urllib.request.urlopen(req, timeout=10) as response:
         data = json.loads(response.read().decode())
@@ -188,7 +217,12 @@ def cli_mode(args):
         print("Example: python options_vol_calculator.py AAPL 3/31/2026 300 call 1/31/2026 10 20")
         return
 
-    ticker = args[0].upper()
+    # Support two-word tickers like "6857 JP" (Bloomberg style)
+    if len(args) >= 2 and args[1].isalpha() and len(args[1]) == 2 and args[1].isupper():
+        ticker = f"{args[0].upper()} {args[1].upper()}"
+        args = args[1:]  # shift so args[1] is now the exp_date
+    else:
+        ticker = args[0].upper()
     exp_date = parse_date(args[1])
     K = float(args[2])
     option_type = args[3].lower()
