@@ -13,18 +13,18 @@ Options Analysis Toolkit — calculates implied volatility using Black-Scholes w
 pip install scipy
 
 # IV calculator - interactive mode
-python scripts/options_vol_calculator.py
+python src/options_vol_calculator.py
 
 # IV calculator - CLI mode (supports up to 3 prices)
-python scripts/options_vol_calculator.py TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]
-# Example: python scripts/options_vol_calculator.py AAPL 3/31/2026 300 call 1/31/2026 10 20
+python src/options_vol_calculator.py TICKER EXP_DATE STRIKE call/put VAL_DATE PRICE_A [PRICE_B] [PRICE_C]
+# Example: python src/options_vol_calculator.py AAPL 3/31/2026 300 call 1/31/2026 10 20
 ```
 
 No test suite, linter, or build step exists. Scripts are run directly.
 
 ## Architecture
 
-- **`scripts/options_vol_calculator.py`** — IV calculator with two modes (interactive and CLI). Uses `scipy.optimize.brentq` for solving and the Yahoo Finance chart API (`query1.finance.yahoo.com`) as a lightweight price source. Supports dividend yield in Black-Scholes pricing.
+- **`src/options_vol_calculator.py`** — IV calculator with two modes (interactive and CLI). Uses `scipy.optimize.brentq` for solving and the Yahoo Finance chart API (`query1.finance.yahoo.com`) as a lightweight price source. Supports dividend yield in Black-Scholes pricing.
 - **`.claude/skills/iv/SKILL.md`** — `/iv` slash command: directly invokes `options_vol_calculator.py` CLI.
 
 Skills live under `.claude/skills/` in the repo. The session-start hook copies them to `~/.claude/skills/<name>/SKILL.md` automatically at session start. Don't use symlinks.
